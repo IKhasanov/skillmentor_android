@@ -43,6 +43,7 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
@@ -234,19 +235,24 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			Log.d("ListView", "listview = " + listView);
 			listView.setAdapter(adapter);
 			
-			new GetAdvertListTask().execute();
+			int param = getArguments().getInt(ARG_SECTION_NUMBER);
+			new GetAdvertListTask().execute(param);
 			
 			return rootView;
 		}
 		
-		public final class GetAdvertListTask extends AsyncTask<Void, Void, List<Advert>> {
+		public final class GetAdvertListTask extends AsyncTask<Integer, Void, List<Advert>> {
 
 			@Override
-			protected List<Advert> doInBackground(Void... params) {
+			protected List<Advert> doInBackground(Integer... params) {
 				List<Advert> advertsList = new ArrayList<Advert>();
 				ApiSession apiSession = new ApiSession();
-				advertsList = apiSession.requestList();
-				
+				if (params[0] == 2) {
+					advertsList = apiSession.requestList();
+				} else {
+					advertsList = apiSession.advertList();
+				}
+
 				return advertsList;
 			}
 			
@@ -285,10 +291,42 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 					holder.tvListItemHeader = (TextView) convertView.findViewById(R.id.tvListItemHeader);
 					holder.tvDescription = (TextView) convertView.findViewById(R.id.tvDescription);
 					holder.tvName = (TextView) convertView.findViewById(R.id.tvName);
+					holder.rlNameDivider = (RelativeLayout) convertView.findViewById(R.id.rlNameDivider);
 					holder.tvPrice = (TextView) convertView.findViewById(R.id.tvPrce);
+					holder.rlPriceDivider = (RelativeLayout) convertView.findViewById(R.id.rlPriceDivider);
+					holder.tvLocation = (TextView) convertView.findViewById(R.id.tvLocation);
+					holder.rlLocationDivider = (RelativeLayout) convertView.findViewById(R.id.rlLocationDivider);
 					convertView.setTag(holder);
 				} else {
 					holder = (ViewHolder) convertView.getTag();
+				}
+				
+				Advert advert = advertModelList.get(position);
+				holder.tvListItemHeader.setText(advert.getTitle());
+				holder.tvDescription.setText(advert.getDescription());
+				if (advert.getUser() == null) {
+					holder.tvName.setVisibility(View.GONE);
+					holder.rlNameDivider.setVisibility(View.GONE);
+				} else {
+					holder.tvName.setText(advert.getUser().getName());
+					holder.tvName.setVisibility(View.VISIBLE);
+					holder.rlNameDivider.setVisibility(View.VISIBLE);
+				}
+				if (advert.getReward() == null) {
+					holder.tvPrice.setVisibility(View.GONE);
+					holder.rlPriceDivider.setVisibility(View.GONE);
+				} else {
+					holder.tvPrice.setText(advert.getReward());
+					holder.tvPrice.setVisibility(View.VISIBLE);
+					holder.rlPriceDivider.setVisibility(View.VISIBLE);
+				}
+				if (advert.getLocation() == null) {
+					holder.tvLocation.setVisibility(View.GONE);
+					holder.rlLocationDivider.setVisibility(View.GONE);
+				} else {
+					holder.tvLocation.setVisibility(View.VISIBLE);
+					holder.tvLocation.setText(advert.getLocation());
+					holder.rlLocationDivider.setVisibility(View.VISIBLE);
 				}
 				
 				return convertView;
@@ -301,7 +339,11 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		TextView tvListItemHeader;
 		TextView tvDescription;
 		TextView tvPrice;
+		RelativeLayout rlPriceDivider;
 		TextView tvName;
+		RelativeLayout rlNameDivider;
+		TextView tvLocation;
+		RelativeLayout rlLocationDivider;
 	}
 	
 	public void showLogInDialog() {

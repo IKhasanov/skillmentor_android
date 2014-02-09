@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 public class Advert {
 
-	private long id;
+	private String id;
 	private String title;
 	private String description;
 	private String location;
@@ -15,13 +15,16 @@ public class Advert {
 	private User user;
 	
 	public void map(JSONObject jsn) throws JSONException {
-		
+		this.title = jsn.getString("title");
+		this.description = jsn.getString("description");
+		this.location = jsn.getString("location");
+		this.id = jsn.getString("_id");
 	}
 	
-	public long getId() {
+	public String getId() {
 		return id;
 	}
-	public void setId(long id) {
+	public void setId(String id) {
 		this.id = id;
 	}
 	public String getTitle() {

@@ -43,7 +43,6 @@ public class ApiSession {
 		List<Advert> result = new ArrayList<Advert>();
 		
 		try {
-			List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
 			try {
 				jsn = sendGetRequest(uri.toString());
 				JSONArray arr = jsn;
@@ -99,7 +98,7 @@ public class ApiSession {
 	}
 	
 	public void createAdvert(String title, String description, String location, String type) {
-		final String methodURI = "/listings/request";
+		final String methodURI = "/listings/create";
 		final String uri = formUriString(serverURI,methodURI);
 		JSONArray jsn = null;
 		
