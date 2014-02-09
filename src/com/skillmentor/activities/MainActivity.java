@@ -1,6 +1,12 @@
-package com.skillmentor;
+package com.skillmentor.activities;
 
 import java.util.Locale;
+
+import com.skillmentor.R;
+import com.skillmentor.R.id;
+import com.skillmentor.R.layout;
+import com.skillmentor.R.menu;
+import com.skillmentor.R.string;
 
 import android.app.ActionBar;
 import android.app.FragmentTransaction;
@@ -18,6 +24,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 public class MainActivity extends FragmentActivity implements
@@ -77,6 +84,7 @@ public class MainActivity extends FragmentActivity implements
 		}
 		
 		ListView listView = (ListView) findViewById(R.id.lvList);
+		//listView.setAdapter();
 	}
 
 	@Override
