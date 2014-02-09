@@ -1,5 +1,8 @@
 package com.skillmentor.models;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class Advert {
 
 	private long id;
@@ -10,6 +13,10 @@ public class Advert {
 	private String phone;
 	private String email;
 	private User user;
+	
+	public void map(JSONObject jsn) throws JSONException {
+		
+	}
 	
 	public long getId() {
 		return id;

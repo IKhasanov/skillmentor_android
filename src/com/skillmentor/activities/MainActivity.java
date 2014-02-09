@@ -1,5 +1,8 @@
 package com.skillmentor.activities;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import com.skillmentor.R;
@@ -7,9 +10,22 @@ import com.skillmentor.R.id;
 import com.skillmentor.R.layout;
 import com.skillmentor.R.menu;
 import com.skillmentor.R.string;
+import com.skillmentor.dialogs.LogInDialogFragment;
+import com.skillmentor.dialogs.LogInDialogFragment.LogInDialogListener;
+import com.skillmentor.models.Advert;
+import com.skillmentor.utils.Consts;
+import com.skillmentor.utils.net.ApiSession;
 
 import android.app.ActionBar;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.DialogFragment;
 import android.app.FragmentTransaction;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -17,18 +33,20 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.app.NavUtils;
 import android.support.v4.view.ViewPager;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
-public class MainActivity extends FragmentActivity implements
-		ActionBar.TabListener {
+public class MainActivity extends FragmentActivity implements ActionBar.TabListener, LogInDialogListener {
 
 	/**
 	 * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -45,10 +63,16 @@ public class MainActivity extends FragmentActivity implements
 	 */
 	ViewPager mViewPager;
 	
+	int menuId = R.menu.mainlogin;
+	
+	protected final static String PREFERENCES_NAME = "Skillmentor";
+	protected SharedPreferences mSettings = null;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		mSettings = getSharedPreferences(PREFERENCES_NAME, Activity.MODE_PRIVATE);
 
 		// Set up the action bar.
 		final ActionBar actionBar = getActionBar();
@@ -83,15 +107,43 @@ public class MainActivity extends FragmentActivity implements
 					.setTabListener(this));
 		}
 		
-		ListView listView = (ListView) findViewById(R.id.lvList);
-		//listView.setAdapter();
+		try {
+			ViewConfiguration config = ViewConfiguration.get(this);
+			Field menuKeyField = ViewConfiguration.class.getDeclaredField("sHasPermanentMenuKey");
+			if (menuKeyField != null) {
+				menuKeyField.setAccessible(true);
+				menuKeyField.setBoolean(config, false);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
+		getMenuInflater().inflate(menuId, menu);
 		return true;
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.action_log_in:
+			showLogInDialog();
+			return true;
+		case R.id.action_log_out:
+			menuId = R.menu.mainlogin;
+			Editor editor = mSettings.edit();
+			editor.remove(Consts.loginArg);
+			editor.remove(Consts.passwordArg);
+			editor.commit();
+			
+			invalidateOptionsMenu();
+			return true;
+		default:
+			return super.onOptionsItemSelected(item);
+		}
 	}
 
 	@Override
@@ -131,18 +183,19 @@ public class MainActivity extends FragmentActivity implements
 			Bundle args = new Bundle();
 			args.putInt(DummySectionFragment.ARG_SECTION_NUMBER, position + 1);
 			fragment.setArguments(args);
+			
 			return fragment;
 		}
 
 		@Override
 		public int getCount() {
-			// Show 3 total pages.
 			return 2;
 		}
 
 		@Override
 		public CharSequence getPageTitle(int position) {
 			Locale l = Locale.getDefault();
+
 			switch (position) {
 			case 0:
 				return getString(R.string.title_section1);
@@ -163,6 +216,9 @@ public class MainActivity extends FragmentActivity implements
 		 * fragment.
 		 */
 		public static final String ARG_SECTION_NUMBER = "section_number";
+		private AdvertListAdapter adapter;
+		private List<Advert> advertModelList = new ArrayList<Advert>();
+
 
 		public DummySectionFragment() {
 		}
@@ -172,10 +228,104 @@ public class MainActivity extends FragmentActivity implements
 				Bundle savedInstanceState) {
 			View rootView = inflater.inflate(R.layout.fragment_main_dummy,
 					container, false);
-//			TextView dummyTextView = (TextView) rootView.findViewById(R.id.section_label);
-//			dummyTextView.setText(Integer.toString(getArguments().getInt(ARG_SECTION_NUMBER)));
+			
+			adapter = new AdvertListAdapter(getActivity(), R.layout.list_item);
+			ListView listView = (ListView) rootView.findViewById(R.id.lvList);
+			Log.d("ListView", "listview = " + listView);
+			listView.setAdapter(adapter);
+			
+			new GetAdvertListTask().execute();
+			
 			return rootView;
 		}
+		
+		public final class GetAdvertListTask extends AsyncTask<Void, Void, List<Advert>> {
+
+			@Override
+			protected List<Advert> doInBackground(Void... params) {
+				List<Advert> advertsList = new ArrayList<Advert>();
+				ApiSession apiSession = new ApiSession();
+				advertsList = apiSession.requestList();
+				
+				return advertsList;
+			}
+			
+			@Override
+			protected void onPostExecute(final List<Advert> advertList) {
+				super.onPostExecute(advertList);
+				
+				advertModelList = advertList;
+				adapter.clear();
+				if (advertModelList != null) {
+					for (Advert advert : advertModelList) {
+						adapter.add(advert);
+					}
+				}
+				adapter.notifyDataSetChanged();
+				System.out.println("Adapter notified");
+			}
+			
+		}
+		
+		public class AdvertListAdapter extends ArrayAdapter<Advert> {
+			private final LayoutInflater mInflater;
+			
+			public AdvertListAdapter(Context context, int resource) {
+				super(context, resource);
+				mInflater = (LayoutInflater) getActivity().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+			}
+			
+			public View getView(final int position, View convertView, ViewGroup parent) {
+				ViewHolder holder = null;
+				
+				if (convertView == null) {
+					holder = new ViewHolder();
+					convertView = mInflater.inflate(R.layout.list_item, null);
+					
+					holder.tvListItemHeader = (TextView) convertView.findViewById(R.id.tvListItemHeader);
+					holder.tvDescription = (TextView) convertView.findViewById(R.id.tvDescription);
+					holder.tvName = (TextView) convertView.findViewById(R.id.tvName);
+					holder.tvPrice = (TextView) convertView.findViewById(R.id.tvPrce);
+					convertView.setTag(holder);
+				} else {
+					holder = (ViewHolder) convertView.getTag();
+				}
+				
+				return convertView;
+			}
+			
+		}
+	}
+	
+	private static class ViewHolder {
+		TextView tvListItemHeader;
+		TextView tvDescription;
+		TextView tvPrice;
+		TextView tvName;
+	}
+	
+	public void showLogInDialog() {
+		LogInDialogFragment dialog = new LogInDialogFragment();
+		dialog.show(getFragmentManager(), "LogInDialogFragment");
+	}
+
+	@Override
+	public void onDialogLogInClick(DialogFragment dialog, Bundle args) {
+		Editor editor = mSettings.edit();
+		Log.d("MainActivity onDialogLogInClick", "Login = " + args.getString(Consts.loginArg));
+		Log.d("MainActivity onDialogLogInClick", "Password = " + args.getString(Consts.passwordArg));
+		editor.putString(Consts.loginArg, args.getString(Consts.loginArg));
+		editor.putString(Consts.passwordArg, args.getString(Consts.passwordArg));
+		editor.commit();
+		
+		menuId = R.menu.mainlogout;
+		invalidateOptionsMenu();
+		dialog.dismiss();
+	}
+
+	@Override
+	public void onDialogCancelClick(DialogFragment dialog) {
+		dialog.dismiss();		
 	}
 
 }
